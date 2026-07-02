@@ -8,6 +8,7 @@ import ru.practicum.moviehub.model.Movie;
 import ru.practicum.moviehub.store.MoviesStore;
 
 import java.io.IOException;
+import java.net.http.HttpRequest;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -34,6 +35,7 @@ public class MoviesHandler extends BaseHttpHandler {
             String json = gson.toJson(store.getAllMovies());
             sendJson(ex, 200, json);
             return;
+            if (parts.length == 3 && parts[2] ==)
         }
         if (method.equalsIgnoreCase("POST")) {
             handlePost(ex);
@@ -51,20 +53,20 @@ public class MoviesHandler extends BaseHttpHandler {
             Gson gson = new Gson();
             CreateMovieRequest req = gson.fromJson(body, CreateMovieRequest.class);
             if (req.title == null || req.title.isBlank()) {
-                errors.add("title не может быть пустым");
+                errors.add("Tittle не может быть пустым");
                 return;
             }
             if (req.title.length() > 100) {
                 errors.add("Tittle слишком длинный");
                 return;
             }
-            if (req.year < 1888 || req.year > LocalDate.now().getYear() + 1) {
-                errors.add("Некорректный Year");
+            if (req.year < 1888 || req.year > LocalDate.now().getYear()) {
+                errors.add("Год должен быть между 1888 и 2026");
                 return;
             }
             if (ex.getRequestHeaders().getFirst("Content-Type") == null ||
                     !ex.getRequestHeaders().getFirst("Content-Type").equals("application/json")) {
-                sendError(ex, 415, new ErrorResponse("Не поддерживаеймы формат", List.of("Content-Type должен быть application/json")));
+                sendError(ex, 415, new ErrorResponse("Не поддерживаемый формат", List.of("Content-Type должен быть application/json")));
                 return;
             }
             if (!errors.isEmpty()) {
@@ -78,7 +80,23 @@ public class MoviesHandler extends BaseHttpHandler {
         } catch (Exception e) {
             sendError(ex,
                     400,
-                    new ErrorResponse("Invalid JSON", List.of("Request vody is not valid JSON")));
+                    new ErrorResponse("Invalid JSON", List.of("Request body is not valid JSON")));
+        }
+    }
+
+    private void handleGetById(HttpExchange ex) throws IOException {
+        List<String> errors = new ArrayList<>();
+        try {
+            String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            Gson gson = new Gson();
+            CreateMovieRequest req = gson.fromJson(body, CreateMovieRequest.class);
+            String[] parts = ex.getRequestURI().getPath().split("/");
+            int id = Integer.parseInt(parts[2]);
+            if (parts[2])//Доделать функцию
+        } catch (Exception e) {
+            sendError(ex,
+                    400,
+                    new ErrorResponse("Invalid JSON", List.of("Request body is not valid JSON")));
         }
     }
 

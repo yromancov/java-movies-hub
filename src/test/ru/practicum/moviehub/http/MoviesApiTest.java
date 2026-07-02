@@ -6,6 +6,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ru.practicum.moviehub.api.CreateMovieRequest;
 import ru.practicum.moviehub.model.Movie;
 import ru.practicum.moviehub.store.MoviesStore;
 
@@ -178,6 +179,7 @@ public class MoviesApiTest {
         HttpResponse<String> response = client.send(firstMovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         assertEquals(415, response.statusCode());
     }
+
     @Test
     void postMovie_return201() throws Exception {
         HttpRequest firstMovie = HttpRequest.newBuilder()
@@ -191,6 +193,47 @@ public class MoviesApiTest {
                 .build();
         HttpResponse<String> response = client.send(firstMovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         assertEquals(201, response.statusCode());
+    }
+
+    @Test
+    void getMvieById_whenMovieExists_returnsMovie() throws Exception {
+        HttpRequest firstMovie = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/movies"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("""
+                        {
+                        "title":"TENNET",
+                        "year":2023
+                        }"""))
+                .build();
+        HttpResponse<String> response = client.send(firstMovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        Movie created = new Gson().fromJson(response.body(), Movie.class);
+        HttpRequest get = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/movies" + created.getId()))
+                .GET()
+                .build();
+        HttpResponse<String> getResponse = client.send(get, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        assertEquals(200, response.statusCode());
+        Movie movie = new Gson().fromJson(getResponse.body(), Movie.class);
+        assertEquals(created, movie);
+    }
+    @Test
+    void getMovieById_WhenMovieNotFound_returns404() throws Exception{
+        HttpRequest get = HttpRequest.newBuilder()
+                .uri(URI.create(BASE+"/movies/999"))
+                .GET()
+                .build();
+        HttpResponse<String> response = client.send(get, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        assertEquals(404,response.statusCode());
+    }
+    @Test
+    void getMovieById_WhenIdNotNumber_returns400() throws Exception{
+        HttpRequest get = HttpRequest.newBuilder()
+                .uri(URI.create(BASE+"/movies/Lll"))
+                .GET()
+                .build();
+        HttpResponse<String> response = client.send(get, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        assertEquals(400,response.statusCode());
     }
 }
 
