@@ -7,11 +7,13 @@ import java.util.stream.Collectors;
 
 public class MoviesStore {
     private int nextId = 1;
-    Map<Integer, Movie> listOfMovie = new HashMap<>();
+private final Map<Integer, Movie> listOfMovie = new HashMap<>();
 
-    public void addMovie(String title, int year) {
-        listOfMovie.put(nextId, new Movie(nextId, year, title));
+    public Movie addMovie(String title, int year) {
+        Movie movie = new Movie(nextId,year,title);
+        listOfMovie.put(nextId, movie);
         nextId++;
+        return movie;
 
     }
 
@@ -19,24 +21,28 @@ public class MoviesStore {
         return listOfMovie.values();
     }
 
-    public Movie getMovieId(int id) {
+    public Movie getMovieById(int id) {
         if (!listOfMovie.containsKey(id)) {
             return null;
         }
         return listOfMovie.get(id);
     }
 
-    public boolean deleteMovieId(int id) {
+    public boolean deleteMovieById(int id) {
         if (!listOfMovie.containsKey(id)) {
             return false;
         }
         listOfMovie.remove(id);
         return true;
     }
-    public List<Movie> getMovieByYear(int year){
+
+    public List<Movie> getMovieByYear(int year) {
         return listOfMovie.values().stream()
-                .filter(movie -> movie.getYear()==year)
+                .filter(movie -> movie.getYear() == year)
                 .collect(Collectors.toList());
     }
-}
+    public void clear(){
+        listOfMovie.clear();
+        nextId = 1;
+    }}
 
