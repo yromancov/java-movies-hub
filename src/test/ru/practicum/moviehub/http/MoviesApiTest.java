@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.practicum.moviehub.model.Movie;
+import ru.practicum.moviehub.store.MoviesStore;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -27,16 +28,18 @@ public class MoviesApiTest {
 
     @BeforeAll
     static void beforeAll() {
-        server = new MoviesServer();
-        server.start();
         client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(2))
                 .build();
+        server = new MoviesServer(new MoviesStore(), 8080);
+        server.start();
     }
 
     @BeforeEach
     void beforeEach() {
-        server.getStore().clear();
+        server.stop();
+        server = new MoviesServer(new MoviesStore(), 8080);
+        server.start();
     }
 
     @AfterAll
@@ -77,13 +80,17 @@ public class MoviesApiTest {
     private static String movieJson(String title, int year) {
         return """
                 {
-                "title": %s,
+                "title": "%s",
                 "year": %d
                 }
                 """.formatted(title, year);
     }
 
     private static Movie parseMovies(String json) {
+        return gson.fromJson(json, Movie.class);
+    }
+
+    private static List<Movie> parseMoviesList(String json) {
         return gson.fromJson(json, new ListOfMoviesTypeToken().getType());
     }
 
@@ -113,7 +120,7 @@ public class MoviesApiTest {
 
         assertEquals(200, response.statusCode());
 
-        List<Movie> movies = parseMovies(response.body());
+        List<Movie> movies = parseMoviesList(response.body());
 
         assertEquals(2, movies.size());
     }
