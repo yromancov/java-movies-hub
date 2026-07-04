@@ -7,10 +7,10 @@ import java.util.stream.Collectors;
 
 public class MoviesStore {
     private int nextId = 1;
-private final Map<Integer, Movie> listOfMovie = new HashMap<>();
+    private final Map<Integer, Movie> listOfMovie = new HashMap<>();
 
     public Movie addMovie(String title, int year) {
-        Movie movie = new Movie(nextId,year,title);
+        Movie movie = new Movie(nextId, year, title);
         listOfMovie.put(nextId, movie);
         nextId++;
         return movie;
@@ -41,8 +41,16 @@ private final Map<Integer, Movie> listOfMovie = new HashMap<>();
                 .filter(movie -> movie.getYear() == year)
                 .collect(Collectors.toList());
     }
-    public void clear(){
+
+    public void clear() {
         listOfMovie.clear();
         nextId = 1;
-    }}
+    }
+
+    public Map<Integer, Movie> getListOfMovie() {
+        return listOfMovie;
+    }
+
+
+}
 

@@ -25,7 +25,6 @@ public class MoviesApiTest {
     private static final String BASE = "http://localhost:8080";
     private static MoviesServer server;
     private static HttpClient client;
-    private static MoviesStore store;
 
     @BeforeAll
     static void beforeAll() {
@@ -36,14 +35,17 @@ public class MoviesApiTest {
                 .build();
     }
 
+    @BeforeEach
+    void beforeEach() {
+        server.getStore().clear();
+    }
+
     @AfterAll
     static void afterAll() {
         server.stop();
     }
-//    @BeforeEach
-//    void beforeEach(){
-//        store.clear();
-//    }
+
+    
 
     @Test
     void getMovies_whenEmpty_returnsEmptyArray() throws Exception {
@@ -196,7 +198,7 @@ public class MoviesApiTest {
     }
 
     @Test
-    void getMvieById_whenMovieExists_returnsMovie() throws Exception {
+    void getMovieById_whenMovieExists_returnsMovie() throws Exception {
         HttpRequest firstMovie = HttpRequest.newBuilder()
                 .uri(URI.create(BASE + "/movies"))
                 .header("Content-Type", "application/json")
@@ -208,32 +210,102 @@ public class MoviesApiTest {
                 .build();
         HttpResponse<String> response = client.send(firstMovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         Movie created = new Gson().fromJson(response.body(), Movie.class);
+
         HttpRequest get = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies" + created.getId()))
+                .uri(URI.create(BASE + "/movies/" + created.getId()))
                 .GET()
                 .build();
         HttpResponse<String> getResponse = client.send(get, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        assertEquals(200, response.statusCode());
+        assertEquals(200, getResponse.statusCode());
         Movie movie = new Gson().fromJson(getResponse.body(), Movie.class);
         assertEquals(created, movie);
     }
+
     @Test
-    void getMovieById_WhenMovieNotFound_returns404() throws Exception{
+    void getMovieById_WhenMovieNotFound_returns404() throws Exception {
         HttpRequest get = HttpRequest.newBuilder()
-                .uri(URI.create(BASE+"/movies/999"))
+                .uri(URI.create(BASE + "/movies/9998"))
                 .GET()
                 .build();
         HttpResponse<String> response = client.send(get, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        assertEquals(404,response.statusCode());
+        assertEquals(404, response.statusCode());
     }
+
     @Test
-    void getMovieById_WhenIdNotNumber_returns400() throws Exception{
+    void getMovieById_WhenIdNotNumber_returns400() throws Exception {
         HttpRequest get = HttpRequest.newBuilder()
-                .uri(URI.create(BASE+"/movies/Lll"))
+                .uri(URI.create(BASE + "/movies/Lll"))
                 .GET()
                 .build();
         HttpResponse<String> response = client.send(get, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        assertEquals(400,response.statusCode());
+        assertEquals(400, response.statusCode());
+    }
+
+    @Test
+    void deleteMovie_WhenMovieNotFound_return204() throws Exception {
+        HttpRequest firstMovie = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/movies"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("""
+                        {
+                        "title":"TENNET",
+                        "year":2023
+                        }"""))
+                .build();
+        HttpResponse<String> response = client.send(firstMovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        Movie created = new Gson().fromJson(response.body(), Movie.class);
+
+        HttpRequest delete = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/movies/" + created.getId()))
+                .DELETE()
+                .build();
+        HttpResponse<String> response1 = client.send(delete, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        assertEquals(204, response1.statusCode());
+
+    }
+
+    @Test
+    void deleteMovie_WhenMovieSucsflDelete_return404() throws Exception {
+        HttpRequest deletemovie = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/movies/999"))
+                .DELETE()
+                .build();
+        HttpResponse<String> response = client.send(deletemovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        assertEquals(404, response.statusCode());
+
+    }
+
+    @Test
+    void getMovieByYear_WhenYearIsCorrect_return200() throws Exception {
+        HttpRequest firstMovie = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/movies"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("""
+                        {
+                        "title":"TENNET",
+                        "year":2023
+                        }"""))
+                .build();
+        HttpResponse<String> response = client.send(firstMovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        Movie created = new Gson().fromJson(response.body(), Movie.class);
+
+        HttpRequest getMovieByYear = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/movies?year=" + created.getYear()))
+                .GET()
+                .build();
+        HttpResponse<String> response1 = client.send(getMovieByYear, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        assertEquals(200, response1.statusCode());
+    }
+
+    @Test
+    void getMovieByYear_WhenYearIsNotCorrect_return400() throws Exception {
+        HttpRequest getMovieByYear = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/movies?year=SKO;IIKUF"))
+                .GET()
+                .build();
+        HttpResponse<String> response1 = client.send(getMovieByYear, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        assertEquals(400, response1.statusCode());
+
     }
 }
 

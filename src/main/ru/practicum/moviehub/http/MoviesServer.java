@@ -9,12 +9,13 @@ import java.net.InetSocketAddress;
 
 public class MoviesServer {
     private final HttpServer server;
+    private final MoviesStore store;
 
     public MoviesServer() {
         try {
             // создайте сервер
-            MoviesStore store = new MoviesStore();
-            server = HttpServer.create(new InetSocketAddress(8080),0);
+            store = new MoviesStore();
+            server = HttpServer.create(new InetSocketAddress(8080), 0);
             server.createContext("/movies", new MoviesHandler(store));
 
 
@@ -33,6 +34,10 @@ public class MoviesServer {
         // остановите сервер
         server.stop(0);
         System.out.println("Сервер остановлен");
+    }
+
+    public MoviesStore getStore() {
+        return store;
     }
 }
 

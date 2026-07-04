@@ -25,9 +25,9 @@ public abstract class BaseHttpHandler implements HttpHandler {
         ex.sendResponseHeaders(204, -1);
     }
 
-    protected void sendError(HttpExchange ex, int status, ErrorResponse error) throws IOException{
+    protected void sendError(HttpExchange ex, int status, ErrorResponse error) throws IOException {
         Gson gson = new Gson();
-        sendJson(ex,status,gson.toJson(error));
+        sendJson(ex, status, gson.toJson(error));
     }
 
 
