@@ -108,8 +108,7 @@ public class MoviesHandler extends BaseHttpHandler {
             if (id > 0 && store.getListOfMovie().containsKey(id)) {
                 Movie movie = store.getMovieById(id);
                 sendJson(ex, 200, gson.toJson(movie));
-            }//Доделать функцию
-            else {
+            } else {
                 sendError(ex, 404, new ErrorResponse("Фильм не найден"));
             }
         } catch (NumberFormatException e) {
@@ -124,8 +123,7 @@ public class MoviesHandler extends BaseHttpHandler {
             if (id > 0 && store.getListOfMovie().containsKey(id)) {
                 store.deleteMovieById(id);
                 sendNoContent(ex);
-            }//Доделать функцию
-            else {
+            } else {
                 sendError(ex, 404, new ErrorResponse("Фильм не найден"));
             }
         } catch (NumberFormatException e) {

@@ -78,12 +78,10 @@ public class MoviesApiTest {
     }
 
     private static String movieJson(String title, int year) {
-        return """
-                {
-                "title": "%s",
-                "year": %d
-                }
-                """.formatted(title, year);
+        return "{"
+                + "\"title\": \"" + title + "\","
+                + "\"year\": " + year +
+                "}";
     }
 
     private static Movie parseMovies(String json) {
