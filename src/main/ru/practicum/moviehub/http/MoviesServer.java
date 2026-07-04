@@ -11,11 +11,11 @@ public class MoviesServer {
     private final HttpServer server;
     private final MoviesStore store;
 
-    public MoviesServer() {
+    public MoviesServer(MoviesStore store, int port) {
         try {
             // создайте сервер
-            store = new MoviesStore();
-            server = HttpServer.create(new InetSocketAddress(8080), 0);
+            this.store = store;
+            server = HttpServer.create(new InetSocketAddress(port), 0);
             server.createContext("/movies", new MoviesHandler(store));
 
 

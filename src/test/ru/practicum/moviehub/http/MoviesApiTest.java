@@ -6,9 +6,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import ru.practicum.moviehub.api.CreateMovieRequest;
 import ru.practicum.moviehub.model.Movie;
-import ru.practicum.moviehub.store.MoviesStore;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -25,6 +23,7 @@ public class MoviesApiTest {
     private static final String BASE = "http://localhost:8080";
     private static MoviesServer server;
     private static HttpClient client;
+    private static final Gson gson = new Gson();
 
     @BeforeAll
     static void beforeAll() {
@@ -45,18 +44,53 @@ public class MoviesApiTest {
         server.stop();
     }
 
-    
+    private static HttpResponse<String> send(HttpRequest request) {
+        try {
+            return client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            throw new AssertionError("HTTP req fail: " + request.uri(), e);
+        }
+    }
+
+    private static HttpRequest get(String path) {
+        return HttpRequest.newBuilder()
+                .uri(URI.create(BASE + path))
+                .GET()
+                .build();
+    }
+
+    private static HttpRequest delete(String path) {
+        return HttpRequest.newBuilder()
+                .uri(URI.create(BASE + path))
+                .DELETE()
+                .build();
+    }
+
+    private static HttpRequest post(String path, String json) {
+        return HttpRequest.newBuilder()
+                .uri(URI.create(BASE + path))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(json))
+                .build();
+    }
+
+    private static String movieJson(String title, int year) {
+        return """
+                {
+                "title": %s,
+                "year": %d
+                }
+                """.formatted(title, year);
+    }
+
+    private static Movie parseMovies(String json) {
+        return gson.fromJson(json, new ListOfMoviesTypeToken().getType());
+    }
 
     @Test
     void getMovies_whenEmpty_returnsEmptyArray() throws Exception {
         // Создайте и запустите MoviesServer
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies"))
-                .GET()
-                .build();
-
-        HttpResponse<String> resp =
-                client.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        HttpResponse<String> resp = send(get("/movies"));
 
         assertEquals(200, resp.statusCode(), "GET /movies должен вернуть 200");
 
@@ -72,239 +106,151 @@ public class MoviesApiTest {
 
     @Test
     void getMovies_whenStoreHasMovies_returnMovies() throws Exception {
-        HttpRequest firstMovie = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies"))
-                .header("Content-Type", "appliaction/json")
-                .POST(HttpRequest.BodyPublishers.ofString("""
-                        {
-                        "title":Interstellar,
-                        "year":"2014"
-                        }"""))
-                .build();
-        HttpRequest secondMovie = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies"))
-                .header("Content-Type", "appliaction/json")
-                .POST(HttpRequest.BodyPublishers.ofString("""
-                        {
-                        "title":Inception,
-                        "year":"2010"
-                        }"""))
-                .build();
-        client.send(firstMovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        client.send(secondMovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        send(post("/movies", movieJson("Interstellar", 2014)));
+        send(post("/movies", movieJson("Inception", 2010)));
 
-        HttpRequest getRequest = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies"))
-                .GET()
-                .build();
-        HttpResponse<String> response = client.send(getRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        HttpResponse<String> response = send(get("/movies"));
+
         assertEquals(200, response.statusCode());
-        List<Movie> movies = new Gson().fromJson(response.body(), new ListOfMoviesTypeToken().getType());
+
+        List<Movie> movies = parseMovies(response.body());
+
         assertEquals(2, movies.size());
     }
 
     @Test
     void postMovie_whenTitleEmpty_returns400() throws Exception {
-        HttpRequest firstMovie = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString("""
-                        {
-                        "title":"",
-                        "year":2014
-                        }"""))
-                .build();
-        HttpResponse<String> response = client.send(firstMovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        HttpResponse<String> response = send(
+                post("/movies", movieJson("", 2014))
+        );
+
         assertEquals(400, response.statusCode());
     }
 
     @Test
     void postMovie_whenTitleOver100symmbols_returns400() throws Exception {
-        HttpRequest firstMovie = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString("""
-                        {
-                        "title":"Un fatto di sangue nel comune di Sculiana fra due uomini per causa di una vedova. Si 
-                        sospettano moventi politici. Amore-Morte-Shimmy. Lugano belle. Tarantelle. Tarallucci e vino, 
-                        1978",
-                        "year":2014
-                        }"""))
-                .build();
-        HttpResponse<String> response = client.send(firstMovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        String longTitle = "A".repeat(120);
+
+        HttpResponse<String> response = send(
+                post("/movies", movieJson(longTitle, 2014))
+        );
+
         assertEquals(400, response.statusCode());
-
-
     }
 
     @Test
     void postMovie_whenYearBelow1888_returns400() throws Exception {
-        HttpRequest firstMovie = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString("""
-                        {
-                        "title":"Un fatto",
-                        "year":1879
-                        }"""))
-                .build();
-        HttpResponse<String> response = client.send(firstMovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        HttpResponse<String> response = send(
+                post("/movies", movieJson("Test", 1879))
+        );
+
         assertEquals(400, response.statusCode());
     }
 
     @Test
     void postMovie_whenYearOverDateNow_returns400() throws Exception {
-        HttpRequest firstMovie = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString("""
-                        {
-                        "title":"Un fatto",
-                        "year":2028
-                        }"""))
-                .build();
-        HttpResponse<String> response = client.send(firstMovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        HttpResponse<String> response = send(
+                post("/movies", movieJson("Test", 2028))
+        );
+
         assertEquals(400, response.statusCode());
     }
 
     @Test
     void postMovie_whenContnet_TypeNotCorrect_returns415() throws Exception {
-        HttpRequest firstMovie = HttpRequest.newBuilder()
+        HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(BASE + "/movies"))
                 .header("Content-Type", "alication/json")
-                .POST(HttpRequest.BodyPublishers.ofString("""
-                        {
-                        "title":"Un fatto",
-                        "year":2026
-                        }"""))
+                .POST(HttpRequest.BodyPublishers.ofString(movieJson("Test", 2026)))
                 .build();
-        HttpResponse<String> response = client.send(firstMovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+
+        HttpResponse<String> response = send(request);
+
         assertEquals(415, response.statusCode());
     }
 
     @Test
     void postMovie_return201() throws Exception {
-        HttpRequest firstMovie = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString("""
-                        {
-                        "title":"TENNET",
-                        "year":2023
-                        }"""))
-                .build();
-        HttpResponse<String> response = client.send(firstMovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        HttpResponse<String> response = send(
+                post("/movies", movieJson("TENET", 2023))
+        );
+
         assertEquals(201, response.statusCode());
     }
 
     @Test
     void getMovieById_whenMovieExists_returnsMovie() throws Exception {
-        HttpRequest firstMovie = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString("""
-                        {
-                        "title":"TENNET",
-                        "year":2023
-                        }"""))
-                .build();
-        HttpResponse<String> response = client.send(firstMovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        Movie created = new Gson().fromJson(response.body(), Movie.class);
+        HttpResponse<String> createResponse =
+                send(post("/movies", movieJson("TENET", 2023)));
 
-        HttpRequest get = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies/" + created.getId()))
-                .GET()
-                .build();
-        HttpResponse<String> getResponse = client.send(get, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        assertEquals(200, getResponse.statusCode());
-        Movie movie = new Gson().fromJson(getResponse.body(), Movie.class);
-        assertEquals(created, movie);
+        Movie created = parseMovies(createResponse.body());
+
+        HttpResponse<String> response =
+                send(get("/movies/" + created.getId()));
+
+        assertEquals(200, response.statusCode());
+
+        Movie found = parseMovies(response.body());
+
+        assertEquals(created, found);
     }
 
     @Test
     void getMovieById_WhenMovieNotFound_returns404() throws Exception {
-        HttpRequest get = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies/9998"))
-                .GET()
-                .build();
-        HttpResponse<String> response = client.send(get, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        HttpResponse<String> response = send(get("/movies/9999"));
+
         assertEquals(404, response.statusCode());
     }
 
     @Test
     void getMovieById_WhenIdNotNumber_returns400() throws Exception {
-        HttpRequest get = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies/Lll"))
-                .GET()
-                .build();
-        HttpResponse<String> response = client.send(get, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        HttpResponse<String> response = send(get("/movies/abc"));
+
         assertEquals(400, response.statusCode());
     }
 
     @Test
     void deleteMovie_WhenMovieNotFound_return204() throws Exception {
-        HttpRequest firstMovie = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString("""
-                        {
-                        "title":"TENNET",
-                        "year":2023
-                        }"""))
-                .build();
-        HttpResponse<String> response = client.send(firstMovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        Movie created = new Gson().fromJson(response.body(), Movie.class);
+        HttpResponse<String> createResponse =
+                send(post("/movies", movieJson("TENET", 2023)));
 
-        HttpRequest delete = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies/" + created.getId()))
-                .DELETE()
-                .build();
-        HttpResponse<String> response1 = client.send(delete, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        assertEquals(204, response1.statusCode());
+        Movie created = parseMovies(createResponse.body());
+
+        HttpResponse<String> deleteResponse =
+                send(delete("/movies/" + created.getId()));
+
+        assertEquals(204, deleteResponse.statusCode());
 
     }
 
     @Test
     void deleteMovie_WhenMovieSucsflDelete_return404() throws Exception {
-        HttpRequest deletemovie = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies/999"))
-                .DELETE()
-                .build();
-        HttpResponse<String> response = client.send(deletemovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        HttpResponse<String> response =
+                send(delete("/movies/999"));
+
         assertEquals(404, response.statusCode());
 
     }
 
     @Test
     void getMovieByYear_WhenYearIsCorrect_return200() throws Exception {
-        HttpRequest firstMovie = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString("""
-                        {
-                        "title":"TENNET",
-                        "year":2023
-                        }"""))
-                .build();
-        HttpResponse<String> response = client.send(firstMovie, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        Movie created = new Gson().fromJson(response.body(), Movie.class);
+        HttpResponse<String> createResponse =
+                send(post("/movies", movieJson("TENET", 2023)));
 
-        HttpRequest getMovieByYear = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies?year=" + created.getYear()))
-                .GET()
-                .build();
-        HttpResponse<String> response1 = client.send(getMovieByYear, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        assertEquals(200, response1.statusCode());
+        Movie created = parseMovies(createResponse.body());
+
+        HttpResponse<String> response =
+                send(get("/movies?year=" + created.getYear()));
+
+        assertEquals(200, response.statusCode());
     }
 
     @Test
     void getMovieByYear_WhenYearIsNotCorrect_return400() throws Exception {
-        HttpRequest getMovieByYear = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/movies?year=SKO;IIKUF"))
-                .GET()
-                .build();
-        HttpResponse<String> response1 = client.send(getMovieByYear, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        assertEquals(400, response1.statusCode());
+        HttpResponse<String> response =
+                send(get("/movies?year=SKO;IIKUF"));
+
+        assertEquals(400, response.statusCode());
 
     }
 }
