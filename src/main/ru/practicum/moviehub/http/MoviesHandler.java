@@ -1,6 +1,6 @@
 package ru.practicum.moviehub.http;
 
-import com.google.gson.Gson;
+
 import com.sun.net.httpserver.HttpExchange;
 import ru.practicum.moviehub.api.CreateMovieRequest;
 import ru.practicum.moviehub.api.ErrorResponse;
@@ -17,7 +17,6 @@ import java.util.List;
 public class MoviesHandler extends BaseHttpHandler {
 
     private final MoviesStore store;
-    private final Gson gson = new Gson();
 
     public MoviesHandler(MoviesStore store) {
         this.store = store;
@@ -30,7 +29,6 @@ public class MoviesHandler extends BaseHttpHandler {
             String path = ex.getRequestURI().getPath();
             String query = ex.getRequestURI().getQuery();
             String[] parts = path.split("/");
-            System.out.println("Началась обработка " + method + " /movies запроса от клиента");
             if (method.equalsIgnoreCase("GET")) {
 
                 if (query != null && query.startsWith("year=")) {
@@ -68,8 +66,6 @@ public class MoviesHandler extends BaseHttpHandler {
         List<String> errors = new ArrayList<>();
         try {
             String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-
-            Gson gson = new Gson();
             CreateMovieRequest req = gson.fromJson(body, CreateMovieRequest.class);
             if (req.title == null || req.title.isBlank()) {
                 errors.add("Title не может быть пустым");

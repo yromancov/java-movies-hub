@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 
 public abstract class BaseHttpHandler implements HttpHandler {
     protected static final String CT_JSON = "application/json; charset=UTF-8";
+    protected static final Gson gson = new Gson();
 
     protected void sendJson(HttpExchange ex, int status, String json) throws IOException {
         ex.getResponseHeaders().set("Content-Type", CT_JSON);
@@ -26,7 +27,6 @@ public abstract class BaseHttpHandler implements HttpHandler {
     }
 
     protected void sendError(HttpExchange ex, int status, ErrorResponse error) throws IOException {
-        Gson gson = new Gson();
         sendJson(ex, status, gson.toJson(error));
     }
 
